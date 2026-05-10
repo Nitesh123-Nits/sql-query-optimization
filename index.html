@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL Query Optimization · Senior Engineer's Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&family=Literata:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+  :root[data-theme="dark"] {
+    --bg: #0a0c10;
+    --bg-card: #0f1318;
+    --bg-code: #060809;
+    --bg-hover: #141920;
+    --border: #1e2730;
+    --border-accent: #2a3545;
+    --text: #c8d8e8;
+    --text-dim: #5a7080;
+    --text-muted: #3a5060;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #7fff6f;
+    --accent4: #c084fc;
+    --accent5: #fbbf24;
+    --warn: #ff4d4d;
+    --nav-bg: rgba(10,12,16,0.92);
+    --tag-bg: #0d1a22;
+    --shadow: 0 4px 32px rgba(0,0,0,0.6);
+    --glow: 0 0 20px rgba(0,212,255,0.12);
+    --heading: #e8f4ff;
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f7fa;
+    --bg-card: #ffffff;
+    --bg-code: #f0f3f7;
+    --bg-hover: #eef2f7;
+    --border: #d8e2ec;
+    --border-accent: #b8cad8;
+    --text: #2a3a4a;
+    --text-dim: #7a8fa0;
+    --text-muted: #b0bfcc;
+    --accent: #0088bb;
+    --accent2: #dd4b1a;
+    --accent3: #2a8c20;
+    --accent4: #7c3aed;
+    --accent5: #c07a00;
+    --warn: #cc2222;
+    --nav-bg: rgba(244,247,250,0.92);
+    --tag-bg: #e8f0f7;
+    --shadow: 0 4px 24px rgba(0,0,0,0.08);
+    --glow: 0 0 20px rgba(0,136,187,0.08);
+    --heading: #0a1a2a;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; font-size: 15px; }
+
+  body {
+    font-family: 'Literata', Georgia, serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.75;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  /* ── NAV ─────────────────────────────────────── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: var(--nav-bg);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex; align-items: center; gap: 0;
+    height: 56px;
+  }
+  .nav-brand {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800; font-size: 1rem;
+    color: var(--accent); letter-spacing: -0.02em;
+    white-space: nowrap; margin-right: 2rem;
+    text-decoration: none;
+  }
+  .nav-brand span { color: var(--text-dim); font-weight: 400; }
+  .nav-links {
+    display: flex; gap: 0; overflow-x: auto; flex: 1;
+    scrollbar-width: none;
+  }
+  .nav-links::-webkit-scrollbar { display: none; }
+  .nav-links a {
+    font-family: 'Syne', sans-serif; font-size: 0.72rem; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text-dim); text-decoration: none;
+    padding: 0 1rem; height: 56px; display: flex; align-items: center;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    white-space: nowrap;
+  }
+  .nav-links a:hover { color: var(--accent); border-color: var(--accent); }
+  .theme-toggle {
+    margin-left: auto; padding: 6px 14px;
+    background: var(--border); border: 1px solid var(--border-accent);
+    border-radius: 20px; cursor: pointer; font-family: 'Syne', sans-serif;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.05em;
+    color: var(--text-dim); transition: all 0.2s;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .theme-toggle:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ── HERO ────────────────────────────────────── */
+  .hero {
+    margin-top: 56px;
+    padding: 5rem 2rem 4rem;
+    max-width: 1200px; margin-left: auto; margin-right: auto;
+    margin-top: calc(56px + 0px);
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; top: -100px; right: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(0,212,255,0.04) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-eyebrow {
+    font-family: 'Syne', sans-serif; font-size: 0.7rem; font-weight: 700;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 1.25rem;
+    display: flex; align-items: center; gap: 0.75rem;
+  }
+  .hero-eyebrow::before { content: ''; display: inline-block; width: 32px; height: 1px; background: var(--accent); }
+  .hero h1 {
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(2rem, 5vw, 3.5rem);
+    line-height: 1.08; letter-spacing: -0.03em;
+    color: var(--heading); margin-bottom: 1.5rem;
+  }
+  .hero h1 em { color: var(--accent); font-style: normal; }
+  .hero-sub {
+    font-size: 1.05rem; color: var(--text-dim); max-width: 640px;
+    font-weight: 300; line-height: 1.8; margin-bottom: 2.5rem;
+  }
+  .hero-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .hero-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+    padding: 4px 12px; border-radius: 4px;
+    background: var(--tag-bg); border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+
+  /* ── LAYOUT ──────────────────────────────────── */
+  .wrapper {
+    max-width: 1200px; margin: 0 auto; padding: 0 2rem 6rem;
+  }
+  .toc {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.75rem 2rem; margin-bottom: 3rem;
+    box-shadow: var(--shadow);
+  }
+  .toc-title {
+    font-family: 'Syne', sans-serif; font-size: 0.68rem; font-weight: 700;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent);
+    margin-bottom: 1rem;
+  }
+  .toc-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr));
+    gap: 0.25rem;
+  }
+  .toc-grid a {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;
+    color: var(--text-dim); text-decoration: none; padding: 5px 8px;
+    border-radius: 5px; transition: all 0.15s;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .toc-grid a::before { content: '→'; color: var(--text-muted); font-size: 0.7rem; }
+  .toc-grid a:hover { color: var(--accent); background: var(--bg-hover); }
+
+  /* ── SECTION ─────────────────────────────────── */
+  .section { margin-bottom: 4rem; }
+  .section-header {
+    display: flex; align-items: flex-start; gap: 1.25rem;
+    margin-bottom: 2rem; padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-num {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; font-weight: 500;
+    color: var(--text-muted); padding-top: 0.5rem; flex-shrink: 0;
+  }
+  .section-title {
+    font-family: 'Syne', sans-serif; font-weight: 700;
+    font-size: clamp(1.3rem, 3vw, 1.75rem); letter-spacing: -0.02em;
+    color: var(--heading); line-height: 1.2;
+  }
+  .section-desc {
+    font-size: 0.9rem; color: var(--text-dim); margin-top: 0.4rem;
+    font-style: italic;
+  }
+
+  h3 {
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem;
+    letter-spacing: -0.01em; color: var(--heading); margin: 2rem 0 0.75rem;
+  }
+  p { margin-bottom: 0.9rem; font-size: 0.93rem; }
+
+  /* ── CARDS ───────────────────────────────────── */
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 1rem; margin: 1.5rem 0; }
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem;
+    box-shadow: var(--shadow); transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .card:hover { border-color: var(--border-accent); box-shadow: var(--glow); }
+  .card-icon { font-size: 1.4rem; margin-bottom: 0.75rem; }
+  .card-title {
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.88rem;
+    color: var(--heading); margin-bottom: 0.5rem;
+  }
+  .card p { font-size: 0.82rem; color: var(--text-dim); margin: 0; line-height: 1.6; }
+
+  /* ── CODE ────────────────────────────────────── */
+  .code-block {
+    position: relative; margin: 1.25rem 0;
+    border-radius: 10px; overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  .code-header {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--border); padding: 0.6rem 1rem;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+  }
+  .code-label { color: var(--text-dim); font-weight: 500; letter-spacing: 0.05em; }
+  .code-badge {
+    font-size: 0.62rem; padding: 2px 8px; border-radius: 4px;
+    font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .badge-bad { background: rgba(255,77,77,0.15); color: var(--warn); }
+  .badge-good { background: rgba(127,255,111,0.12); color: var(--accent3); }
+  .badge-info { background: rgba(0,212,255,0.10); color: var(--accent); }
+  .badge-warn { background: rgba(251,191,36,0.12); color: var(--accent5); }
+
+  pre {
+    background: var(--bg-code); padding: 1.25rem 1.5rem;
+    overflow-x: auto; font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem; line-height: 1.8; color: var(--text);
+    margin: 0; tab-size: 2;
+  }
+  .kw { color: var(--accent); font-weight: 500; }
+  .fn { color: var(--accent4); }
+  .str { color: var(--accent3); }
+  .cm { color: var(--text-muted); font-style: italic; }
+  .nm { color: var(--accent5); }
+  .op { color: var(--accent2); }
+  .num { color: #e88c6a; }
+
+  /* ── COMPARE BLOCKS ─────────────────────────── */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.25rem 0; }
+  @media (max-width: 768px) { .compare { grid-template-columns: 1fr; } }
+
+  /* ── PILLS / BADGES ─────────────────────────── */
+  .pill {
+    display: inline-block; font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem; padding: 2px 9px; border-radius: 20px; font-weight: 500;
+  }
+  .pill-blue { background: rgba(0,212,255,0.1); color: var(--accent); }
+  .pill-red { background: rgba(255,77,77,0.1); color: var(--warn); }
+  .pill-green { background: rgba(127,255,111,0.1); color: var(--accent3); }
+  .pill-yellow { background: rgba(251,191,36,0.1); color: var(--accent5); }
+  .pill-purple { background: rgba(192,132,252,0.1); color: var(--accent4); }
+
+  /* ── RULE TABLE ─────────────────────────────── */
+  .rule-list { list-style: none; margin: 1rem 0; }
+  .rule-list li {
+    display: flex; align-items: flex-start; gap: 0.75rem;
+    padding: 0.65rem 0; border-bottom: 1px solid var(--border);
+    font-size: 0.88rem;
+  }
+  .rule-list li:last-child { border-bottom: none; }
+  .rule-icon { font-size: 0.9rem; flex-shrink: 0; margin-top: 2px; }
+
+  /* ── TABLE ───────────────────────────────────── */
+  .table-wrap { overflow-x: auto; margin: 1.25rem 0; border-radius: 10px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th {
+    background: var(--border); font-family: 'Syne', sans-serif; font-weight: 700;
+    font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-dim); padding: 0.75rem 1rem; text-align: left;
+  }
+  td { padding: 0.7rem 1rem; border-bottom: 1px solid var(--border); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg-hover); }
+  td code, th code {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;
+    background: var(--tag-bg); padding: 1px 6px; border-radius: 3px;
+    color: var(--accent);
+  }
+
+  /* ── CALLOUTS ────────────────────────────────── */
+  .callout {
+    padding: 1.1rem 1.4rem; border-radius: 8px; margin: 1.25rem 0;
+    border-left: 3px solid; font-size: 0.88rem;
+  }
+  .callout-tip { background: rgba(0,212,255,0.05); border-color: var(--accent); }
+  .callout-warn { background: rgba(251,191,36,0.05); border-color: var(--accent5); }
+  .callout-danger { background: rgba(255,77,77,0.05); border-color: var(--warn); }
+  .callout-success { background: rgba(127,255,111,0.05); border-color: var(--accent3); }
+  .callout-title {
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.72rem;
+    letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.4rem;
+  }
+  .callout-tip .callout-title { color: var(--accent); }
+  .callout-warn .callout-title { color: var(--accent5); }
+  .callout-danger .callout-title { color: var(--warn); }
+  .callout-success .callout-title { color: var(--accent3); }
+
+  /* ── PERF METER ─────────────────────────────── */
+  .perf-bar-wrap { margin: 0.5rem 0; }
+  .perf-label {
+    display: flex; justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.73rem;
+    color: var(--text-dim); margin-bottom: 0.3rem;
+  }
+  .perf-bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+  .perf-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+
+  /* ── ACCORDION ──────────────────────────────── */
+  .accordion { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 1rem 0; }
+  .acc-item { border-bottom: 1px solid var(--border); }
+  .acc-item:last-child { border-bottom: none; }
+  .acc-header {
+    width: 100%; background: none; border: none; cursor: pointer;
+    padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.88rem;
+    color: var(--heading); text-align: left; transition: background 0.2s;
+  }
+  .acc-header:hover { background: var(--bg-hover); }
+  .acc-arrow { color: var(--accent); transition: transform 0.25s; font-size: 0.8rem; }
+  .acc-item.open .acc-arrow { transform: rotate(90deg); }
+  .acc-body { display: none; padding: 0 1.25rem 1.25rem; }
+  .acc-item.open .acc-body { display: block; }
+
+  /* ── PROFILING TIMELINE ─────────────────────── */
+  .timeline { position: relative; padding-left: 2rem; margin: 1rem 0; }
+  .timeline::before {
+    content: ''; position: absolute; left: 0.55rem; top: 0; bottom: 0;
+    width: 1px; background: var(--border);
+  }
+  .tl-item { position: relative; margin-bottom: 1.5rem; }
+  .tl-dot {
+    position: absolute; left: -1.5rem; top: 4px;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--accent); border: 2px solid var(--bg);
+  }
+  .tl-step {
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.82rem;
+    color: var(--accent); margin-bottom: 0.3rem;
+  }
+  .tl-body { font-size: 0.87rem; color: var(--text-dim); }
+
+  /* ── DIVIDER ─────────────────────────────────── */
+  hr { border: none; border-top: 1px solid var(--border); margin: 3rem 0; }
+
+  /* ── FOOTER ──────────────────────────────────── */
+  footer {
+    border-top: 1px solid var(--border); padding: 2rem; text-align: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+
+  /* ── INLINE CODE ─────────────────────────────── */
+  code {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.82em;
+    background: var(--tag-bg); border: 1px solid var(--border);
+    padding: 1px 5px; border-radius: 3px; color: var(--accent);
+  }
+
+  @media (max-width: 600px) {
+    .hero { padding: 3rem 1.25rem 2.5rem; }
+    .wrapper { padding: 0 1.25rem 4rem; }
+    nav { padding: 0 1rem; }
+    .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-brand">SQL<span>/OPT</span></a>
+  <div class="nav-links">
+    <a href="#fundamentals">Fundamentals</a>
+    <a href="#indexing">Indexing</a>
+    <a href="#query-patterns">Query Patterns</a>
+    <a href="#joins">Joins</a>
+    <a href="#aggregation">Aggregation</a>
+    <a href="#subqueries">Subqueries</a>
+    <a href="#profiling">Profiling</a>
+    <a href="#advanced">Advanced</a>
+    <a href="#checklist">Checklist</a>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()">☀ Light</button>
+</nav>
+
+<!-- HERO -->
+<div class="hero" style="margin-top:56px">
+  <div class="hero-eyebrow">Senior Engineer's Reference</div>
+  <h1>SQL Query<br><em>Optimization</em></h1>
+  <p class="hero-sub">A battle-tested handbook covering index design, query patterns, execution plan analysis, and profiling workflows — written for engineers who need to go fast under pressure.</p>
+  <div class="hero-tags">
+    <span class="hero-tag">PostgreSQL</span>
+    <span class="hero-tag">MySQL</span>
+    <span class="hero-tag">EXPLAIN ANALYZE</span>
+    <span class="hero-tag">Indexes</span>
+    <span class="hero-tag">CTEs</span>
+    <span class="hero-tag">Window Functions</span>
+    <span class="hero-tag">Partitioning</span>
+    <span class="hero-tag">Query Planner</span>
+  </div>
+</div>
+
+<!-- WRAPPER -->
+<div class="wrapper">
+
+  <!-- TOC -->
+  <div class="toc">
+    <div class="toc-title">Table of Contents</div>
+    <div class="toc-grid">
+      <a href="#fundamentals">How Query Planners Work</a>
+      <a href="#indexing">Index Design & Strategy</a>
+      <a href="#query-patterns">Anti-Patterns & Fixes</a>
+      <a href="#joins">JOIN Optimization</a>
+      <a href="#aggregation">Aggregation Tuning</a>
+      <a href="#subqueries">Subqueries vs CTEs</a>
+      <a href="#profiling">Profiling Workflow</a>
+      <a href="#advanced">Advanced Techniques</a>
+      <a href="#partitioning">Table Partitioning</a>
+      <a href="#checklist">Senior Checklist</a>
+    </div>
+  </div>
+
+  <!-- ─── 1. FUNDAMENTALS ─── -->
+  <section class="section" id="fundamentals">
+    <div class="section-header">
+      <div class="section-num">01</div>
+      <div>
+        <div class="section-title">How Query Planners Work</div>
+        <div class="section-desc">The mental model you need before optimizing anything</div>
+      </div>
+    </div>
+
+    <p>The query planner transforms your SQL into a physical execution plan using cost estimation. Understanding this pipeline is prerequisite knowledge — you cannot optimize a black box.</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">📝</div>
+        <div class="card-title">Parse & Rewrite</div>
+        <p>SQL is parsed into a query tree. The rewriter applies rule-based transforms (views, rules). This stage is syntactic — no cost estimation yet.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📊</div>
+        <div class="card-title">Statistics & Cardinality</div>
+        <p>The planner reads <code>pg_statistic</code> / <code>information_schema</code>. Stale stats = wrong plan. Run <code>ANALYZE</code> after bulk loads.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔀</div>
+        <div class="card-title">Plan Generation</div>
+        <p>All valid join orders & access methods are enumerated (up to <code>join_collapse_limit</code>). Each path gets a cost. The lowest-cost plan wins.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚙️</div>
+        <div class="card-title">Execution</div>
+        <p>The plan is executed via a pipeline of operators: SeqScan, IndexScan, Hash, Sort, Aggregate. Each has I/O and CPU cost components.</p>
+      </div>
+    </div>
+
+    <h3>The Three Access Methods</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Method</th><th>When Used</th><th>Cost Profile</th><th>Tip</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Sequential Scan</strong></td><td>Full table scans, high selectivity queries (&gt;10–20% rows)</td><td>Low I/O per page, high total I/O</td><td>Often correct for small tables — don't force an index scan</td></tr>
+          <tr><td><strong>Index Scan</strong></td><td>Low selectivity (&lt;5–10% rows), ordered output needed</td><td>Random I/O, high for large result sets</td><td>B-tree default; use for range and equality predicates</td></tr>
+          <tr><td><strong>Index-Only Scan</strong></td><td>All projected columns are in the index (covering index)</td><td>Zero heap access if VM is current</td><td>Most powerful optimization; design indexes to cover</td></tr>
+          <tr><td><strong>Bitmap Heap Scan</strong></td><td>Medium selectivity; multi-index conditions via AND/OR</td><td>Bulk heap access sorted by block</td><td>PostgreSQL combines bitmap scans from multiple indexes</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-tip">
+      <div class="callout-title">⚡ Key Insight</div>
+      Random I/O (index scan on spinning disk) is 100–1000x slower than sequential I/O. On SSDs this gap narrows but never disappears. Always profile on representative hardware.
+    </div>
+  </section>
+
+  <!-- ─── 2. INDEXING ─── -->
+  <section class="section" id="indexing">
+    <div class="section-header">
+      <div class="section-num">02</div>
+      <div>
+        <div class="section-title">Index Design & Strategy</div>
+        <div class="section-desc">The single highest-impact optimization lever you have</div>
+      </div>
+    </div>
+
+    <h3>Column Ordering in Composite Indexes</h3>
+    <p>The most critical rule: put <strong>equality predicates first</strong>, then <strong>range predicates</strong>, then <strong>ORDER BY columns</strong>. This maximizes selectivity early in the B-tree traversal.</p>
+
+    <div class="compare">
+      <div class="code-block">
+        <div class="code-header"><span class="code-label">Suboptimal Index</span><span class="code-badge badge-bad">BAD</span></div>
+        <pre><span class="cm">-- Range column BEFORE equality column</span>
+<span class="cm">-- Wastes the range scan entirely</span>
+<span class="kw">CREATE INDEX</span> idx_orders_bad
+<span class="kw">ON</span> orders (created_at, status);
+
+<span class="cm">-- Query: must scan full created_at range</span>
+<span class="cm">-- then filter status in heap</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders
+<span class="kw">WHERE</span> status = <span class="str">'pending'</span>
+  <span class="kw">AND</span> created_at > <span class="str">'2024-01-01'</span>;</pre>
+      </div>
+      <div class="code-block">
+        <div class="code-header"><span class="code-label">Optimal Index</span><span class="code-badge badge-good">GOOD</span></div>
+        <pre><span class="cm">-- Equality first → Range second</span>
+<span class="cm">-- Planner narrows status=pending first</span>
+<span class="kw">CREATE INDEX</span> idx_orders_good
+<span class="kw">ON</span> orders (status, created_at);
+
+<span class="cm">-- Seeks to status='pending' leaf block</span>
+<span class="cm">-- then range-scans created_at forward</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders
+<span class="kw">WHERE</span> status = <span class="str">'pending'</span>
+  <span class="kw">AND</span> created_at > <span class="str">'2024-01-01'</span>;</pre>
+      </div>
+    </div>
+
+    <h3>Covering Indexes (Index-Only Scan)</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">PostgreSQL INCLUDE — Covering Index</span><span class="code-badge badge-good">BEST PRACTICE</span></div>
+      <pre><span class="cm">-- Include projected columns to eliminate heap fetches entirely</span>
+<span class="cm">-- status, user_id = search predicates → B-tree key columns</span>
+<span class="cm">-- amount, created_at = SELECT columns → stored in leaf pages</span>
+<span class="kw">CREATE INDEX</span> idx_orders_covering
+<span class="kw">ON</span> orders (status, user_id)
+<span class="kw">INCLUDE</span> (amount, created_at);
+
+<span class="cm">-- This query now NEVER touches the heap table</span>
+<span class="kw">SELECT</span> amount, created_at
+<span class="kw">FROM</span>   orders
+<span class="kw">WHERE</span>  status  = <span class="str">'shipped'</span>
+  <span class="kw">AND</span>  user_id = <span class="num">42</span>;
+
+<span class="cm">-- Verify with EXPLAIN:</span>
+<span class="cm">-- → Index Only Scan using idx_orders_covering</span>
+<span class="cm">-- → Heap Fetches: 0  ← target metric</span></pre>
+    </div>
+
+    <h3>Partial Indexes</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">Partial Index — Filter Nulls or Rare Values</span><span class="code-badge badge-good">HIGH IMPACT</span></div>
+      <pre><span class="cm">-- Index only rows where the predicate is true</span>
+<span class="cm">-- 95% of orders are 'completed' — only index the 5% that are 'pending'</span>
+<span class="kw">CREATE INDEX</span> idx_orders_pending
+<span class="kw">ON</span> orders (created_at)
+<span class="kw">WHERE</span> status = <span class="str">'pending'</span>;
+
+<span class="cm">-- Tiny index, faster updates, perfect cardinality for this query:</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders
+<span class="kw">WHERE</span> status = <span class="str">'pending'</span>
+<span class="kw">ORDER BY</span> created_at;
+
+<span class="cm">-- Another common pattern: index non-null columns</span>
+<span class="kw">CREATE INDEX</span> idx_users_email_notnull
+<span class="kw">ON</span> users (email)
+<span class="kw">WHERE</span> email <span class="kw">IS NOT NULL</span>;</pre>
+    </div>
+
+    <h3>Expression & Function Indexes</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">Index on Expression</span><span class="code-badge badge-info">PATTERN</span></div>
+      <pre><span class="cm">-- Problem: function on column = no index use</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> users
+<span class="kw">WHERE</span> <span class="fn">LOWER</span>(email) = <span class="str">'alice@example.com'</span>;
+<span class="cm">-- ↑ causes Seq Scan regardless of index on email</span>
+
+<span class="cm">-- Fix: index the expression itself</span>
+<span class="kw">CREATE INDEX</span> idx_users_email_lower
+<span class="kw">ON</span> users (<span class="fn">LOWER</span>(email));
+
+<span class="cm">-- Now the planner can use it.</span>
+<span class="cm">-- Same pattern for date truncation:</span>
+<span class="kw">CREATE INDEX</span> idx_events_day
+<span class="kw">ON</span> events (<span class="fn">DATE_TRUNC</span>(<span class="str">'day'</span>, created_at));
+
+<span class="cm">-- MySQL equivalent: generated column</span>
+<span class="kw">ALTER TABLE</span> users
+  <span class="kw">ADD COLUMN</span> email_lower <span class="kw">VARCHAR</span>(<span class="num">255</span>)
+  <span class="kw">AS</span> (<span class="fn">LOWER</span>(email)) <span class="kw">STORED</span>;
+<span class="kw">CREATE INDEX</span> idx_email_lower <span class="kw">ON</span> users (email_lower);</pre>
+    </div>
+
+    <h3>Index Types</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Type</th><th>Use Case</th><th>Supports Operators</th></tr></thead>
+        <tbody>
+          <tr><td><strong>B-tree</strong></td><td>Default. Equality, range, ORDER BY, prefix LIKE</td><td><code>=</code> <code>&lt;</code> <code>&gt;</code> <code>BETWEEN</code> <code>LIKE 'x%'</code></td></tr>
+          <tr><td><strong>Hash</strong></td><td>Equality only. Faster than B-tree for pure equality in PG 10+</td><td><code>=</code> only</td></tr>
+          <tr><td><strong>GIN</strong></td><td>Full-text search, JSONB containment, array overlap</td><td><code>@@</code> <code>@&gt;</code> <code>&amp;&amp;</code></td></tr>
+          <tr><td><strong>GiST</strong></td><td>Geometric data, range types, full-text</td><td><code>&amp;&amp;</code> <code>&lt;&lt;</code> <code>@&gt;</code> <code>&lt;-&gt;</code></td></tr>
+          <tr><td><strong>BRIN</strong></td><td>Very large, naturally ordered tables (time-series, logs)</td><td>Range queries on correlated columns</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-warn">
+      <div class="callout-title">⚠ Index Overhead</div>
+      Every index costs: extra storage, slower writes (INSERT/UPDATE/DELETE must maintain the index), and bloat over time. Unused indexes are pure overhead. Audit periodically with <code>pg_stat_user_indexes</code> and drop unused ones.
+    </div>
+  </section>
+
+  <!-- ─── 3. QUERY PATTERNS ─── -->
+  <section class="section" id="query-patterns">
+    <div class="section-header">
+      <div class="section-num">03</div>
+      <div>
+        <div class="section-title">Anti-Patterns & Fixes</div>
+        <div class="section-desc">The most expensive mistakes engineers make daily</div>
+      </div>
+    </div>
+
+    <h3>1 — Function Calls on Indexed Columns (Index Killer #1)</h3>
+    <div class="compare">
+      <div class="code-block">
+        <div class="code-header"><span class="code-label">Anti-Pattern</span><span class="code-badge badge-bad">KILLS INDEX</span></div>
+        <pre><span class="cm">-- Any function on the left side = Seq Scan</span>
+<span class="kw">WHERE</span> <span class="fn">YEAR</span>(created_at) = <span class="num">2024</span>
+<span class="kw">WHERE</span> <span class="fn">LOWER</span>(name) = <span class="str">'alice'</span>
+<span class="kw">WHERE</span> <span class="fn">CAST</span>(user_id <span class="kw">AS</span> <span class="kw">TEXT</span>) = <span class="str">'42'</span>
+<span class="kw">WHERE</span> <span class="fn">DATE</span>(created_at) = <span class="str">'2024-03-01'</span></pre>
+      </div>
+      <div class="code-block">
+        <div class="code-header"><span class="code-label">Fix</span><span class="code-badge badge-good">INDEX FRIENDLY</span></div>
+        <pre><span class="cm">-- Push computation to the literal side</span>
+<span class="kw">WHERE</span> created_at >= <span class="str">'2024-01-01'</span>
+  <span class="kw">AND</span> created_at <  <span class="str">'2025-01-01'</span>
+<span class="cm">-- OR use expression index (see §2)</span>
+<span class="kw">WHERE</span> <span class="fn">LOWER</span>(name) = <span class="str">'alice'</span> <span class="cm">-- with expr idx</span>
+<span class="kw">WHERE</span> user_id = <span class="num">42</span>          <span class="cm">-- fix type mismatch</span>
+<span class="kw">WHERE</span> created_at >= <span class="str">'2024-03-01'</span>
+  <span class="kw">AND</span> created_at <  <span class="str">'2024-03-02'</span></pre>
+      </div>
+    </div>
+
+    <h3>2 — Implicit Type Coercion</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">Type Mismatch — Silent Plan Killer</span><span class="code-badge badge-bad">DANGER</span></div>
+      <pre><span class="cm">-- Schema: user_id BIGINT, but param is a string</span>
+<span class="cm">-- MySQL silently casts and disables index</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders <span class="kw">WHERE</span> user_id = <span class="str">'100'</span>;  <span class="cm">-- ← string</span>
+
+<span class="cm">-- Schema: phone VARCHAR, but param is integer</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> users <span class="kw">WHERE</span> phone = <span class="num">5551234567</span>;  <span class="cm">-- ← int</span>
+
+<span class="cm">-- Fix: match exact types in application code & ORM</span>
+<span class="cm">-- Verify with EXPLAIN that index scan is used</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders <span class="kw">WHERE</span> user_id = <span class="num">100</span>;    <span class="cm">-- ← BIGINT</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> users  <span class="kw">WHERE</span> phone = <span class="str">'5551234567'</span>; <span class="cm">-- ← VARCHAR</span></pre>
+    </div>
+
+    <h3>3 — SELECT * in Production Queries</h3>
+    <div class="compare">
+      <div class="code-block">
+        <div class="code-header"><span class="code-label">Anti-Pattern</span><span class="code-badge badge-bad">BAD</span></div>
+        <pre><span class="cm">-- Fetches all columns including BLOBs, JSON</span>
+<span class="cm">-- Prevents covering index usage</span>
+<span class="cm">-- Breaks when schema changes</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> products
+<span class="kw">WHERE</span> category_id = <span class="num">5</span>;</pre>
+      </div>
+      <div class="code-block">
+        <div class="code-header"><span class="code-label">Fix</span><span class="code-badge badge-good">GOOD</span></div>
+        <pre><span class="cm">-- Project only what you need</span>
+<span class="cm">-- Enables covering index (Index Only Scan)</span>
+<span class="cm">-- Smaller network payload</span>
+<span class="kw">SELECT</span> id, name, price, stock
+<span class="kw">FROM</span>   products
+<span class="kw">WHERE</span>  category_id = <span class="num">5</span>;</pre>
+      </div>
+    </div>
+
+    <h3>4 — The N+1 Query Problem</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">N+1 → Batch with IN or JOIN</span><span class="code-badge badge-bad">CRITICAL</span></div>
+      <pre><span class="cm">-- Application code anti-pattern (pseudocode)</span>
+orders = <span class="fn">query</span>(<span class="str">"SELECT * FROM orders WHERE status='pending'"</span>) <span class="cm">-- 1 query</span>
+<span class="kw">FOR EACH</span> order <span class="kw">IN</span> orders:
+    user = <span class="fn">query</span>(<span class="str">"SELECT * FROM users WHERE id = "</span> + order.user_id) <span class="cm">-- N queries!</span>
+
+<span class="cm">── Fix 1: JOIN ──────────────────────────────────────────────</span>
+<span class="kw">SELECT</span> o.id, o.amount, u.name, u.email
+<span class="kw">FROM</span>   orders o
+<span class="kw">JOIN</span>   users  u <span class="kw">ON</span> u.id = o.user_id
+<span class="kw">WHERE</span>  o.status = <span class="str">'pending'</span>;
+
+<span class="cm">── Fix 2: Batch IN (when JOIN is impractical) ────────────────</span>
+order_ids = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>, ...]  <span class="cm">-- collect first</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> users
+<span class="kw">WHERE</span> id <span class="kw">IN</span> (<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>, ...);   <span class="cm">-- 1 query total</span></pre>
+    </div>
+
+    <h3>5 — LIKE with Leading Wildcard</h3>
+    <div class="compare">
+      <div class="code-block">
+        <div class="code-header"><span class="code-label">Leading Wildcard</span><span class="code-badge badge-bad">NO INDEX</span></div>
+        <pre><span class="cm">-- Cannot use B-tree index</span>
+<span class="kw">WHERE</span> name <span class="kw">LIKE</span> <span class="str">'%alice%'</span>
+<span class="kw">WHERE</span> name <span class="kw">LIKE</span> <span class="str">'%son'</span></pre>
+      </div>
+      <div class="code-block">
+        <div class="code-header"><span class="code-label">Alternatives</span><span class="code-badge badge-good">USE INSTEAD</span></div>
+        <pre><span class="cm">-- Trailing wildcard: B-tree works</span>
+<span class="kw">WHERE</span> name <span class="kw">LIKE</span> <span class="str">'alice%'</span>
+
+<span class="cm">-- Full-text search (PostgreSQL)</span>
+<span class="kw">WHERE</span> <span class="fn">to_tsvector</span>(<span class="str">'english'</span>, name)
+    @@ <span class="fn">to_tsquery</span>(<span class="str">'alice'</span>)
+
+<span class="cm">-- pg_trgm for arbitrary substring</span>
+<span class="kw">CREATE INDEX</span> idx_trgm <span class="kw">ON</span> t
+  <span class="kw">USING</span> gin (name gin_trgm_ops);</pre>
+      </div>
+    </div>
+
+    <h3>6 — OR Conditions</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">OR → UNION ALL (often faster)</span><span class="code-badge badge-info">PATTERN</span></div>
+      <pre><span class="cm">-- OR often prevents optimal index use; forces bitmap scan merge</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders
+<span class="kw">WHERE</span> status = <span class="str">'pending'</span>
+   <span class="kw">OR</span> status = <span class="str">'processing'</span>;
+
+<span class="cm">-- Better: use IN (equivalent for equality)</span>
+<span class="kw">WHERE</span> status <span class="kw">IN</span> (<span class="str">'pending'</span>, <span class="str">'processing'</span>);
+
+<span class="cm">-- For cross-column OR, UNION ALL lets each branch use its own index</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> users <span class="kw">WHERE</span> email = <span class="str">'a@b.com'</span>
+<span class="kw">UNION ALL</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> users <span class="kw">WHERE</span> phone = <span class="str">'555-1234'</span>
+  <span class="kw">AND</span> email != <span class="str">'a@b.com'</span>;  <span class="cm">-- deduplicate overlap</span></pre>
+    </div>
+  </section>
+
+  <!-- ─── 4. JOINS ─── -->
+  <section class="section" id="joins">
+    <div class="section-header">
+      <div class="section-num">04</div>
+      <div>
+        <div class="section-title">JOIN Optimization</div>
+        <div class="section-desc">Join algorithms, ordering strategy, and when each wins</div>
+      </div>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🔁</div>
+        <div class="card-title">Nested Loop Join</div>
+        <p>Outer row × inner index lookup. Best when outer set is small and inner join column is indexed. O(n·log m).</p>
+        <p style="margin-top:0.5rem"><span class="pill pill-green">Best</span> small outer, indexed inner</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🪣</div>
+        <div class="card-title">Hash Join</div>
+        <p>Build a hash table from smaller relation, probe with larger. Excellent for large unsorted joins. O(n+m) with memory. Spills to disk if <code>work_mem</code> insufficient.</p>
+        <p style="margin-top:0.5rem"><span class="pill pill-blue">Best</span> large equi-joins</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔀</div>
+        <div class="card-title">Merge Join</div>
+        <p>Both inputs must be sorted on join key. Extremely fast when both sides pre-sorted (index scan). O((n+m)·log). Preferred when ORDER BY matches join key.</p>
+        <p style="margin-top:0.5rem"><span class="pill pill-purple">Best</span> pre-sorted inputs</p>
+      </div>
+    </div>
+
+    <h3>Join Column Data Types Must Match</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">Type Mismatch Causes Implicit Cast on Join</span><span class="code-badge badge-bad">COMMON BUG</span></div>
+      <pre><span class="cm">-- orders.user_id  INT  vs  users.id  BIGINT</span>
+<span class="cm">-- PostgreSQL will cast INT→BIGINT, may skip index</span>
+<span class="kw">SELECT</span> o.*, u.name
+<span class="kw">FROM</span>   orders o
+<span class="kw">JOIN</span>   users  u <span class="kw">ON</span> o.user_id = u.id;  <span class="cm">-- ← silent cast</span>
+
+<span class="cm">-- Check types:</span>
+<span class="kw">SELECT</span> column_name, data_type
+<span class="kw">FROM</span>   information_schema.columns
+<span class="kw">WHERE</span>  table_name <span class="kw">IN</span> (<span class="str">'orders'</span>, <span class="str">'users'</span>)
+  <span class="kw">AND</span>  column_name <span class="kw">IN</span> (<span class="str">'user_id'</span>, <span class="str">'id'</span>);</pre>
+    </div>
+
+    <h3>Join Order — Filter Early</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">Drive From the Most Selective Table First</span><span class="code-badge badge-good">STRATEGY</span></div>
+      <pre><span class="cm">-- Bad: joining large tables first, filtering late</span>
+<span class="kw">SELECT</span> p.name, c.name <span class="kw">AS</span> category, s.qty
+<span class="kw">FROM</span>   products p               <span class="cm">-- 10M rows</span>
+<span class="kw">JOIN</span>   stock    s <span class="kw">ON</span> s.product_id = p.id  <span class="cm">-- 50M rows</span>
+<span class="kw">JOIN</span>   categories c <span class="kw">ON</span> c.id = p.category_id
+<span class="kw">WHERE</span>  c.slug = <span class="str">'electronics'</span>;  <span class="cm">-- 200 rows</span>
+
+<span class="cm">-- Good: pre-filter categories, drive from tiny result</span>
+<span class="kw">SELECT</span> p.name, c.name, s.qty
+<span class="kw">FROM</span>   categories c              <span class="cm">-- 200 rows after filter</span>
+<span class="kw">JOIN</span>   products p <span class="kw">ON</span> p.category_id = c.id
+<span class="kw">JOIN</span>   stock    s <span class="kw">ON</span> s.product_id = p.id
+<span class="kw">WHERE</span>  c.slug = <span class="str">'electronics'</span>;
+
+<span class="cm">-- Or hint the planner (PG):</span>
+<span class="kw">SET</span> join_collapse_limit = <span class="num">1</span>;  <span class="cm">-- follow query order exactly</span></pre>
+    </div>
+
+    <h3>Lateral Joins — Correlated Subquery Replacement</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">LATERAL — Top-N Per Group (PostgreSQL)</span><span class="code-badge badge-info">ADVANCED</span></div>
+      <pre><span class="cm">-- Get the 3 most recent orders per user — elegant & fast</span>
+<span class="kw">SELECT</span> u.id, u.name, o.id <span class="kw">AS</span> order_id, o.amount
+<span class="kw">FROM</span>   users u
+<span class="kw">CROSS JOIN LATERAL</span> (
+    <span class="kw">SELECT</span> id, amount
+    <span class="kw">FROM</span>   orders
+    <span class="kw">WHERE</span>  user_id = u.id         <span class="cm">-- references outer row</span>
+    <span class="kw">ORDER BY</span> created_at <span class="kw">DESC</span>
+    <span class="kw">LIMIT</span>  <span class="num">3</span>
+) o;
+
+<span class="cm">-- Alternative: ROW_NUMBER() window function</span>
+<span class="kw">WITH</span> ranked <span class="kw">AS</span> (
+  <span class="kw">SELECT</span> *, <span class="fn">ROW_NUMBER</span>() <span class="kw">OVER</span> (
+    <span class="kw">PARTITION BY</span> user_id
+    <span class="kw">ORDER BY</span> created_at <span class="kw">DESC</span>
+  ) rn <span class="kw">FROM</span> orders
+)
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> ranked <span class="kw">WHERE</span> rn <= <span class="num">3</span>;</pre>
+    </div>
+  </section>
+
+  <!-- ─── 5. AGGREGATION ─── -->
+  <section class="section" id="aggregation">
+    <div class="section-header">
+      <div class="section-num">05</div>
+      <div>
+        <div class="section-title">Aggregation Tuning</div>
+        <div class="section-desc">GROUP BY, HAVING, and window function strategies</div>
+      </div>
+    </div>
+
+    <h3>Filter Before Aggregating</h3>
+    <div class="compare">
+      <div class="code-block">
+        <div class="code-header"><span class="code-label">Late Filter</span><span class="code-badge badge-bad">SLOW</span></div>
+        <pre><span class="cm">-- Aggregates ALL orders first</span>
+<span class="cm">-- then filters with HAVING</span>
+<span class="kw">SELECT</span>   user_id, <span class="fn">SUM</span>(amount)
+<span class="kw">FROM</span>     orders
+<span class="kw">GROUP BY</span> user_id
+<span class="kw">HAVING</span>   <span class="fn">SUM</span>(amount) > <span class="num">1000</span>
+  <span class="kw">AND</span>    status = <span class="str">'completed'</span>;</pre>
+      </div>
+      <div class="code-block">
+        <div class="code-header"><span class="code-label">Early Filter</span><span class="code-badge badge-good">FAST</span></div>
+        <pre><span class="cm">-- Filter rows BEFORE aggregation</span>
+<span class="cm">-- Reduce input to GROUP BY dramatically</span>
+<span class="kw">SELECT</span>   user_id, <span class="fn">SUM</span>(amount)
+<span class="kw">FROM</span>     orders
+<span class="kw">WHERE</span>    status = <span class="str">'completed'</span>  <span class="cm">-- ← WHERE</span>
+<span class="kw">GROUP BY</span> user_id
+<span class="kw">HAVING</span>   <span class="fn">SUM</span>(amount) > <span class="num">1000</span>;</pre>
+      </div>
+    </div>
+
+    <h3>Window Functions vs Subqueries</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">Window Functions — Single Pass Over Data</span><span class="code-badge badge-good">PREFER</span></div>
+      <pre><span class="cm">── Running totals ─────────────────────────────────────────</span>
+<span class="kw">SELECT</span>
+  id, amount, created_at,
+  <span class="fn">SUM</span>(amount) <span class="kw">OVER</span> (
+    <span class="kw">PARTITION BY</span> user_id
+    <span class="kw">ORDER BY</span>     created_at
+    <span class="kw">ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW</span>
+  ) <span class="kw">AS</span> running_total
+<span class="kw">FROM</span> orders;
+
+<span class="cm">── Percent of total per group ─────────────────────────────</span>
+<span class="kw">SELECT</span>
+  product_id, revenue,
+  <span class="num">100.0</span> * revenue / <span class="fn">SUM</span>(revenue) <span class="kw">OVER</span> (
+    <span class="kw">PARTITION BY</span> category_id
+  ) <span class="kw">AS</span> pct_of_category
+<span class="kw">FROM</span> sales;
+
+<span class="cm">── Lag/Lead — compare to previous row ────────────────────</span>
+<span class="kw">SELECT</span>
+  date, revenue,
+  <span class="fn">LAG</span>(revenue) <span class="kw">OVER</span> (<span class="kw">ORDER BY</span> date) <span class="kw">AS</span> prev_revenue,
+  revenue - <span class="fn">LAG</span>(revenue) <span class="kw">OVER</span> (<span class="kw">ORDER BY</span> date) <span class="kw">AS</span> delta
+<span class="kw">FROM</span> daily_revenue;</pre>
+    </div>
+
+    <h3>FILTER Clause — Conditional Aggregation</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">FILTER — Single Pass Multi-Aggregation (PG 9.4+)</span><span class="code-badge badge-good">ELEGANT</span></div>
+      <pre><span class="cm">-- Instead of multiple subqueries or CASE WHEN inside SUM</span>
+<span class="kw">SELECT</span>
+  <span class="fn">COUNT</span>(*) <span class="kw">AS</span> total_orders,
+  <span class="fn">COUNT</span>(*) <span class="kw">FILTER</span> (<span class="kw">WHERE</span> status = <span class="str">'completed'</span>)  <span class="kw">AS</span> completed,
+  <span class="fn">COUNT</span>(*) <span class="kw">FILTER</span> (<span class="kw">WHERE</span> status = <span class="str">'cancelled'</span>)  <span class="kw">AS</span> cancelled,
+  <span class="fn">SUM</span>(amount) <span class="kw">FILTER</span> (<span class="kw">WHERE</span> status = <span class="str">'completed'</span>) <span class="kw">AS</span> revenue
+<span class="kw">FROM</span> orders
+<span class="kw">WHERE</span> created_at >= <span class="str">'2024-01-01'</span>;
+
+<span class="cm">-- MySQL equivalent: SUM(CASE WHEN ...)</span>
+<span class="kw">SELECT</span>
+  <span class="fn">SUM</span>(<span class="kw">CASE WHEN</span> status=<span class="str">'completed'</span> <span class="kw">THEN</span> <span class="num">1</span> <span class="kw">ELSE</span> <span class="num">0</span> <span class="kw">END</span>) <span class="kw">AS</span> completed
+<span class="kw">FROM</span> orders;</pre>
+    </div>
+  </section>
+
+  <!-- ─── 6. SUBQUERIES / CTEs ─── -->
+  <section class="section" id="subqueries">
+    <div class="section-header">
+      <div class="section-num">06</div>
+      <div>
+        <div class="section-title">Subqueries, CTEs & Derived Tables</div>
+        <div class="section-desc">When to inline, when to materialize, and when to avoid</div>
+      </div>
+    </div>
+
+    <h3>CTE Materialization Gotcha (PostgreSQL 12+)</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">CTE Fence — Force vs Allow Inline</span><span class="code-badge badge-warn">PG SPECIFIC</span></div>
+      <pre><span class="cm">-- Pre-PG12: ALL CTEs were optimization fences (materialized)</span>
+<span class="cm">-- PG12+: CTEs inlined by default unless they are:</span>
+<span class="cm">--   - referenced more than once, OR</span>
+<span class="cm">--   - marked MATERIALIZED explicitly</span>
+
+<span class="cm">── Force materialization (cache expensive computation once) ──</span>
+<span class="kw">WITH</span> expensive_cte <span class="kw">AS MATERIALIZED</span> (
+  <span class="kw">SELECT</span> user_id, <span class="fn">SUM</span>(amount) <span class="kw">AS</span> total
+  <span class="kw">FROM</span>   orders
+  <span class="kw">GROUP BY</span> user_id
+)
+<span class="kw">SELECT</span> u.name, c.total
+<span class="kw">FROM</span>   users u
+<span class="kw">JOIN</span>   expensive_cte c <span class="kw">ON</span> c.user_id = u.id;
+
+<span class="cm">── Force inlining (let planner optimize through it) ──────────</span>
+<span class="kw">WITH</span> my_filter <span class="kw">AS NOT MATERIALIZED</span> (
+  <span class="kw">SELECT</span> * <span class="kw">FROM</span> orders <span class="kw">WHERE</span> status = <span class="str">'pending'</span>
+)
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> my_filter <span class="kw">WHERE</span> amount > <span class="num">100</span>;</pre>
+    </div>
+
+    <h3>EXISTS vs IN vs JOIN</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">EXISTS Short-Circuits — Faster for "at least one" checks</span><span class="code-badge badge-info">PATTERN</span></div>
+      <pre><span class="cm">── Use EXISTS for existence check (stops at first match) ─────</span>
+<span class="kw">SELECT</span> u.*
+<span class="kw">FROM</span>   users u
+<span class="kw">WHERE</span>  <span class="kw">EXISTS</span> (
+  <span class="kw">SELECT</span> <span class="num">1</span> <span class="kw">FROM</span> orders o
+  <span class="kw">WHERE</span> o.user_id = u.id
+    <span class="kw">AND</span> o.amount > <span class="num">1000</span>
+);
+
+<span class="cm">── IN with large subquery can be slow — use JOIN instead ─────</span>
+<span class="cm">-- Bad: IN with correlated subquery</span>
+<span class="kw">WHERE</span> user_id <span class="kw">IN</span> (
+  <span class="kw">SELECT</span> id <span class="kw">FROM</span> premium_users <span class="kw">WHERE</span> tier = <span class="str">'gold'</span>
+)
+
+<span class="cm">-- Better: JOIN (planner can choose hash join)</span>
+<span class="kw">JOIN</span> premium_users pu
+  <span class="kw">ON</span> pu.id = u.id <span class="kw">AND</span> pu.tier = <span class="str">'gold'</span>
+
+<span class="cm">── NOT EXISTS is almost always faster than NOT IN ────────────</span>
+<span class="cm">-- NOT IN returns no rows if subquery contains NULL!</span>
+<span class="kw">WHERE</span> <span class="kw">NOT EXISTS</span> (
+  <span class="kw">SELECT</span> <span class="num">1</span> <span class="kw">FROM</span> blacklist b
+  <span class="kw">WHERE</span> b.user_id = u.id
+);</pre>
+    </div>
+  </section>
+
+  <!-- ─── 7. PROFILING ─── -->
+  <section class="section" id="profiling">
+    <div class="section-header">
+      <div class="section-num">07</div>
+      <div>
+        <div class="section-title">Profiling Workflow</div>
+        <div class="section-desc">Systematic diagnosis: from symptom to root cause in minutes</div>
+      </div>
+    </div>
+
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-step">Step 1 — Identify Slow Queries</div>
+        <div class="tl-body">Enable slow query log or query <code>pg_stat_statements</code>. Sort by total_time descending to find the queries worth optimizing (not just slowest single run).</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-step">Step 2 — EXPLAIN (no execution)</div>
+        <div class="tl-body">Get the plan the optimizer chose. Identify join types, scan types, and estimated rows. Spot misestimates (estimated vs actual).</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-step">Step 3 — EXPLAIN ANALYZE (with execution)</div>
+        <div class="tl-body">Execute the query and get actual row counts, actual time, and loop counts. The gap between estimated and actual rows is the key signal.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-step">Step 4 — EXPLAIN (ANALYZE, BUFFERS)</div>
+        <div class="tl-body">Add buffer stats: <code>shared hit</code> = cache, <code>shared read</code> = disk I/O. High read count = missing index or poor cache hit rate.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-step">Step 5 — Fix & Verify</div>
+        <div class="tl-body">Apply the fix (index, rewrite, stats update). Run EXPLAIN ANALYZE again and compare execution time and buffer hits. Always measure before/after.</div>
+      </div>
+    </div>
+
+    <h3>EXPLAIN ANALYZE Deep Dive</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">Full Profiling Command</span><span class="code-badge badge-info">PostgreSQL</span></div>
+      <pre><span class="kw">EXPLAIN</span> (
+  <span class="kw">ANALYZE</span>,       <span class="cm">-- actually execute</span>
+  <span class="kw">BUFFERS</span>,       <span class="cm">-- I/O stats</span>
+  <span class="kw">FORMAT</span> JSON,   <span class="cm">-- for tools like explain.depesz.com</span>
+  <span class="kw">VERBOSE</span>        <span class="cm">-- show column-level output info</span>
+)
+<span class="kw">SELECT</span> u.name, <span class="fn">SUM</span>(o.amount)
+<span class="kw">FROM</span>   orders o
+<span class="kw">JOIN</span>   users  u <span class="kw">ON</span> u.id = o.user_id
+<span class="kw">WHERE</span>  o.status = <span class="str">'pending'</span>
+<span class="kw">GROUP BY</span> u.name;</pre>
+    </div>
+
+    <h3>Reading the Output — Key Signals</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">Annotated EXPLAIN ANALYZE Output</span><span class="code-badge badge-info">READ THIS</span></div>
+      <pre><span class="cm">HashAggregate  (cost=2840.00..2880.00 rows=4000 width=48)</span>
+<span class="cm">              (actual time=312.5..315.1 rows=3821 loops=1)</span>
+<span class="cm">              ↑ cost estimate    ↑ actual rows  ↑ 1 execution</span>
+  <span class="cm">->  Hash Join  (cost=250.00..2400.00 rows=88000 width=32)</span>
+<span class="op">               (actual time=12.3..285.0 rows=88421 loops=1)</span>
+<span class="cm">        Hash Cond: (o.user_id = u.id)</span>
+<span class="cm">        Buffers: shared hit=1200 read=340</span>
+<span class="cm">        ↑ 1200 pages from cache, 340 from disk  ← optimize this</span>
+<span class="cm">        ->  Seq Scan on orders o</span>
+<span class="cm">              (actual rows=450000)  ← all rows, no index used</span>
+<span class="cm">              Filter: (status = 'pending')</span>
+<span class="cm">              Rows Removed by Filter: 405000  ← 90% waste</span>
+<span class="cm">              ↑ CREATE INDEX on (status) or partial index!</span>
+
+<span class="cm">Planning Time:   2.3 ms</span>
+<span class="cm">Execution Time: 315.8 ms  ← total wall clock</span></pre>
+    </div>
+
+    <h3>pg_stat_statements — Fleet-Wide Analysis</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">Find Top 10 Queries by Total Time</span><span class="code-badge badge-info">MONITORING</span></div>
+      <pre><span class="kw">SELECT</span>
+  <span class="fn">LEFT</span>(query, <span class="num">80</span>)             <span class="kw">AS</span> query_preview,
+  calls,
+  <span class="fn">ROUND</span>(total_exec_time::numeric, <span class="num">2</span>) <span class="kw">AS</span> total_ms,
+  <span class="fn">ROUND</span>(mean_exec_time::numeric,  <span class="num">2</span>) <span class="kw">AS</span> avg_ms,
+  <span class="fn">ROUND</span>(stddev_exec_time::numeric, <span class="num">2</span>) <span class="kw">AS</span> stddev_ms,
+  <span class="fn">ROUND</span>(<span class="num">100.0</span> * total_exec_time /
+    <span class="fn">SUM</span>(total_exec_time) <span class="kw">OVER</span>(), <span class="num">2</span>) <span class="kw">AS</span> pct_total
+<span class="kw">FROM</span>   pg_stat_statements
+<span class="kw">ORDER BY</span> total_exec_time <span class="kw">DESC</span>
+<span class="kw">LIMIT</span>  <span class="num">10</span>;
+
+<span class="cm">-- Reset stats (after optimization) to measure delta:</span>
+<span class="kw">SELECT</span> <span class="fn">pg_stat_statements_reset</span>();</pre>
+    </div>
+
+    <h3>MySQL Profiling</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">MySQL EXPLAIN & Performance Schema</span><span class="code-badge badge-info">MySQL</span></div>
+      <pre><span class="cm">-- MySQL EXPLAIN FORMAT=TREE (8.0+)</span>
+<span class="kw">EXPLAIN</span> <span class="kw">FORMAT</span>=TREE
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders <span class="kw">WHERE</span> status=<span class="str">'pending'</span>;
+
+<span class="cm">-- EXPLAIN ANALYZE (MySQL 8.0.18+)</span>
+<span class="kw">EXPLAIN ANALYZE</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders <span class="kw">WHERE</span> status=<span class="str">'pending'</span>;
+
+<span class="cm">-- Key columns in classic EXPLAIN output:</span>
+<span class="cm">-- type:  system > const > eq_ref > ref > range > index > ALL</span>
+<span class="cm">--        ↑ best                                        ↑ worst</span>
+<span class="cm">-- rows:  estimated row count (lower = better)</span>
+<span class="cm">-- Extra: "Using index" = covering | "Using filesort" = bad sort</span>
+
+<span class="cm">-- Slow query log:</span>
+<span class="kw">SET</span> GLOBAL slow_query_log = <span class="str">'ON'</span>;
+<span class="kw">SET</span> GLOBAL long_query_time = <span class="num">0.1</span>;  <span class="cm">-- 100ms threshold</span>
+<span class="cm">-- then: mysqldumpslow -s t /var/log/mysql/slow.log</span></pre>
+    </div>
+
+    <h3>Performance Benchmarks — Know Your Numbers</h3>
+
+    <div class="perf-bar-wrap">
+      <div class="perf-label"><span>Index Scan (selective, SSD)</span><span style="color:var(--accent3)">~0.1ms</span></div>
+      <div class="perf-bar"><div class="perf-fill" style="width:4%;background:var(--accent3)"></div></div>
+    </div>
+    <div class="perf-bar-wrap">
+      <div class="perf-label"><span>Hash Join — 100K × 10K</span><span style="color:var(--accent)">~15ms</span></div>
+      <div class="perf-bar"><div class="perf-fill" style="width:22%;background:var(--accent)"></div></div>
+    </div>
+    <div class="perf-bar-wrap">
+      <div class="perf-label"><span>Sequential Scan — 1M rows</span><span style="color:var(--accent5)">~200ms</span></div>
+      <div class="perf-bar"><div class="perf-fill" style="width:52%;background:var(--accent5)"></div></div>
+    </div>
+    <div class="perf-bar-wrap">
+      <div class="perf-label"><span>Sort 10M rows (no index)</span><span style="color:var(--accent2)">~3s</span></div>
+      <div class="perf-bar"><div class="perf-fill" style="width:75%;background:var(--accent2)"></div></div>
+    </div>
+    <div class="perf-bar-wrap">
+      <div class="perf-label"><span>Full table scan + sort — 100M rows</span><span style="color:var(--warn)">~45s+</span></div>
+      <div class="perf-bar"><div class="perf-fill" style="width:100%;background:var(--warn)"></div></div>
+    </div>
+  </section>
+
+  <!-- ─── 8. ADVANCED ─── -->
+  <section class="section" id="advanced">
+    <div class="section-header">
+      <div class="section-num">08</div>
+      <div>
+        <div class="section-title">Advanced Techniques</div>
+        <div class="section-desc">Materialized views, query hints, connection pooling, and statistics</div>
+      </div>
+    </div>
+
+    <h3>Materialized Views — Pre-compute Expensive Aggregates</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">Materialized View with Concurrent Refresh</span><span class="code-badge badge-good">HIGH IMPACT</span></div>
+      <pre><span class="cm">-- Create once; query many times at near-zero cost</span>
+<span class="kw">CREATE MATERIALIZED VIEW</span> mv_user_revenue <span class="kw">AS</span>
+<span class="kw">SELECT</span>
+  u.id, u.name, u.email,
+  <span class="fn">COUNT</span>(o.id)  <span class="kw">AS</span> order_count,
+  <span class="fn">SUM</span>(o.amount) <span class="kw">AS</span> total_revenue,
+  <span class="fn">MAX</span>(o.created_at) <span class="kw">AS</span> last_order_at
+<span class="kw">FROM</span>  users u
+<span class="kw">LEFT JOIN</span> orders o <span class="kw">ON</span> o.user_id = u.id
+<span class="kw">GROUP BY</span> u.id, u.name, u.email
+<span class="kw">WITH DATA</span>;
+
+<span class="cm">-- Index the materialized view</span>
+<span class="kw">CREATE INDEX</span> ON mv_user_revenue (total_revenue <span class="kw">DESC</span>);
+
+<span class="cm">-- Refresh without locking reads (requires unique index)</span>
+<span class="kw">CREATE UNIQUE INDEX</span> ON mv_user_revenue (id);
+<span class="kw">REFRESH MATERIALIZED VIEW CONCURRENTLY</span> mv_user_revenue;
+
+<span class="cm">-- Schedule via pg_cron:</span>
+<span class="kw">SELECT</span> <span class="fn">cron.schedule</span>(<span class="str">'refresh-mv'</span>, <span class="str">'*/5 * * * *'</span>,
+  <span class="str">'REFRESH MATERIALIZED VIEW CONCURRENTLY mv_user_revenue'</span>);</pre>
+    </div>
+
+    <h3>Statistics Targets — Fix Misestimates</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">Increase Statistics for Skewed Columns</span><span class="code-badge badge-warn">TUNING</span></div>
+      <pre><span class="cm">-- Default stats target = 100 (about 300 distinct values tracked)</span>
+<span class="cm">-- Skewed columns (status, country_code) need more detail</span>
+
+<span class="cm">-- Check current stats for a column:</span>
+<span class="kw">SELECT</span> attname, attstattarget
+<span class="kw">FROM</span>   pg_attribute
+<span class="kw">WHERE</span>  attrelid = <span class="str">'orders'</span>::regclass
+  <span class="kw">AND</span>  attnum > <span class="num">0</span>;
+
+<span class="cm">-- Increase for a specific skewed column:</span>
+<span class="kw">ALTER TABLE</span> orders
+  <span class="kw">ALTER COLUMN</span> status <span class="kw">SET STATISTICS</span> <span class="num">500</span>;
+
+<span class="cm">-- Force re-analysis:</span>
+<span class="kw">ANALYZE</span> orders (status);
+
+<span class="cm">-- Check most common values after:</span>
+<span class="kw">SELECT</span> most_common_vals, most_common_freqs
+<span class="kw">FROM</span>   pg_stats
+<span class="kw">WHERE</span>  tablename = <span class="str">'orders'</span>
+  <span class="kw">AND</span>  attname   = <span class="str">'status'</span>;</pre>
+    </div>
+
+    <h3>work_mem — Sort & Hash Join Tuning</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">work_mem — Prevent Disk Spills</span><span class="code-badge badge-info">CONFIG</span></div>
+      <pre><span class="cm">-- Default work_mem = 4MB (too low for analytics)</span>
+<span class="cm">-- Each sort/hash in a query can use this much</span>
+<span class="cm">-- N parallel workers × M concurrent connections × work_mem</span>
+<span class="cm">-- must fit in RAM → set per-session for analytics queries</span>
+
+<span class="cm">-- Per-session (safe approach):</span>
+<span class="kw">SET</span> work_mem = <span class="str">'256MB'</span>;
+<span class="kw">SELECT</span> ... <span class="cm">-- your expensive analytics query</span>
+<span class="kw">RESET</span> work_mem;
+
+<span class="cm">-- Check for disk spills in explain output:</span>
+<span class="cm">-- "Sort Method: external merge  Disk: 45MB"  ← increase work_mem</span>
+<span class="cm">-- "Sort Method: quicksort  Memory: 128kB"   ← fits in memory ✓</span>
+
+<span class="cm">-- For hash joins:</span>
+<span class="cm">-- "Batches: 8  (originally 1)"  ← spilled to disk, need more work_mem</span></pre>
+    </div>
+  </section>
+
+  <!-- ─── 9. PARTITIONING ─── -->
+  <section class="section" id="partitioning">
+    <div class="section-header">
+      <div class="section-num">09</div>
+      <div>
+        <div class="section-title">Table Partitioning</div>
+        <div class="section-desc">Partition pruning, range partitioning, and maintenance</div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">Range Partitioning by Month (PostgreSQL)</span><span class="code-badge badge-info">PATTERN</span></div>
+      <pre><span class="cm">-- Declarative partitioning (PG 10+)</span>
+<span class="kw">CREATE TABLE</span> orders (
+  id         <span class="kw">BIGSERIAL</span>,
+  user_id    <span class="kw">BIGINT</span>       <span class="kw">NOT NULL</span>,
+  amount     <span class="kw">DECIMAL</span>(<span class="num">12</span>,<span class="num">2</span>) <span class="kw">NOT NULL</span>,
+  status     <span class="kw">VARCHAR</span>(<span class="num">20</span>)  <span class="kw">NOT NULL</span>,
+  created_at <span class="kw">TIMESTAMPTZ</span>  <span class="kw">NOT NULL</span>
+) <span class="kw">PARTITION BY RANGE</span> (created_at);
+
+<span class="cm">-- Create monthly partitions</span>
+<span class="kw">CREATE TABLE</span> orders_2024_01
+  <span class="kw">PARTITION OF</span> orders
+  <span class="kw">FOR VALUES FROM</span> (<span class="str">'2024-01-01'</span>) <span class="kw">TO</span> (<span class="str">'2024-02-01'</span>);
+
+<span class="kw">CREATE TABLE</span> orders_2024_02
+  <span class="kw">PARTITION OF</span> orders
+  <span class="kw">FOR VALUES FROM</span> (<span class="str">'2024-02-01'</span>) <span class="kw">TO</span> (<span class="str">'2024-03-01'</span>);
+
+<span class="cm">-- Each partition gets its own indexes</span>
+<span class="kw">CREATE INDEX</span> <span class="kw">ON</span> orders_2024_01 (user_id, created_at);
+
+<span class="cm">-- Partition pruning is automatic when filtering on partition key:</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders
+<span class="kw">WHERE</span> created_at <span class="kw">BETWEEN</span> <span class="str">'2024-01-01'</span> <span class="kw">AND</span> <span class="str">'2024-01-31'</span>;
+<span class="cm">-- → scans ONLY orders_2024_01, not all other partitions</span>
+
+<span class="cm">-- Drop old partition instantly (vs DELETE taking minutes)</span>
+<span class="kw">DROP TABLE</span> orders_2022_01;  <span class="cm">-- immediate, no vacuum needed</span></pre>
+    </div>
+
+    <div class="callout callout-success">
+      <div class="callout-title">✓ Partitioning Benefits</div>
+      Partition pruning can reduce scan scope by 99%+ for time-range queries. Dropping old data is instant (DROP TABLE). Per-partition VACUUM and ANALYZE run concurrently. Partition-wise aggregation and joins can parallelize across partitions.
+    </div>
+  </section>
+
+  <!-- ─── CHECKLIST ─── -->
+  <section class="section" id="checklist">
+    <div class="section-header">
+      <div class="section-num">10</div>
+      <div>
+        <div class="section-title">Senior Engineer Checklist</div>
+        <div class="section-desc">Run this before every production query review</div>
+      </div>
+    </div>
+
+    <div class="accordion">
+      <div class="acc-item open">
+        <button class="acc-header" onclick="toggleAcc(this)">
+          🔍 Query Design
+          <span class="acc-arrow">›</span>
+        </button>
+        <div class="acc-body">
+          <ul class="rule-list">
+            <li><span class="rule-icon">✅</span>SELECT only the columns you need — never SELECT *</li>
+            <li><span class="rule-icon">✅</span>Filter with WHERE before aggregating; use HAVING only for post-aggregate filters</li>
+            <li><span class="rule-icon">✅</span>No functions on left-hand side of WHERE predicates on indexed columns</li>
+            <li><span class="rule-icon">✅</span>Types of join columns exactly match — no implicit casts</li>
+            <li><span class="rule-icon">✅</span>Use EXISTS / NOT EXISTS instead of IN / NOT IN for existence checks</li>
+            <li><span class="rule-icon">✅</span>LIMIT applied as early as possible, not on the outermost query wrapping a full scan</li>
+            <li><span class="rule-icon">✅</span>Pagination uses keyset/cursor-based approach, not OFFSET on large tables</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="acc-item">
+        <button class="acc-header" onclick="toggleAcc(this)">
+          📊 Index Strategy
+          <span class="acc-arrow">›</span>
+        </button>
+        <div class="acc-body">
+          <ul class="rule-list">
+            <li><span class="rule-icon">✅</span>Equality predicates before range predicates in composite index column order</li>
+            <li><span class="rule-icon">✅</span>Covering index (INCLUDE) used for hot read paths — verify with "Heap Fetches: 0"</li>
+            <li><span class="rule-icon">✅</span>Partial index used where predicate is low-cardinality (status, is_deleted)</li>
+            <li><span class="rule-icon">✅</span>Expression index exists if applying function to indexed column</li>
+            <li><span class="rule-icon">✅</span>Foreign key columns are indexed (especially on the many-side of relations)</li>
+            <li><span class="rule-icon">✅</span>Unused indexes identified and dropped (check pg_stat_user_indexes.idx_scan = 0)</li>
+            <li><span class="rule-icon">✅</span>Index bloat checked for high-churn tables (pg_stat_user_tables)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="acc-item">
+        <button class="acc-header" onclick="toggleAcc(this)">
+          🔬 Profiling & Verification
+          <span class="acc-arrow">›</span>
+        </button>
+        <div class="acc-body">
+          <ul class="rule-list">
+            <li><span class="rule-icon">✅</span>EXPLAIN ANALYZE run on representative data, not dev/staging with tiny dataset</li>
+            <li><span class="rule-icon">✅</span>Estimated vs actual row counts checked — large gaps indicate stale stats</li>
+            <li><span class="rule-icon">✅</span>ANALYZE run after bulk data load or major table changes</li>
+            <li><span class="rule-icon">✅</span>Buffers checked: high "shared read" vs "shared hit" ratio signals I/O issue</li>
+            <li><span class="rule-icon">✅</span>No "external merge Disk" in sort steps — increase work_mem if needed</li>
+            <li><span class="rule-icon">✅</span>Query measured before and after optimization with pg_stat_statements</li>
+            <li><span class="rule-icon">✅</span>Load tested at realistic concurrency (not just single-threaded latency)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="acc-item">
+        <button class="acc-header" onclick="toggleAcc(this)">
+          ⚡ Architecture
+          <span class="acc-arrow">›</span>
+        </button>
+        <div class="acc-body">
+          <ul class="rule-list">
+            <li><span class="rule-icon">✅</span>Materialized view used for dashboards/reports that tolerate slight staleness</li>
+            <li><span class="rule-icon">✅</span>Table partitioned by time if table exceeds 100M rows with time-range access patterns</li>
+            <li><span class="rule-icon">✅</span>Read replicas used for analytical queries to isolate from OLTP workload</li>
+            <li><span class="rule-icon">✅</span>Connection pool configured (PgBouncer / ProxySQL) — not direct connections</li>
+            <li><span class="rule-icon">✅</span>max_connections and pool size sized for CPU core count, not arbitrary</li>
+            <li><span class="rule-icon">✅</span>Long-running transactions identified and minimized (they block VACUUM)</li>
+            <li><span class="rule-icon">✅</span>VACUUM autovacuum settings tuned for high-churn tables</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <h3>Keyset Pagination — Replacing OFFSET</h3>
+    <div class="compare">
+      <div class="code-block">
+        <div class="code-header"><span class="code-label">OFFSET Pagination</span><span class="code-badge badge-bad">O(N) SCAN</span></div>
+        <pre><span class="cm">-- OFFSET 1000000 still scans 1M rows</span>
+<span class="cm">-- Gets slower with every page</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders
+<span class="kw">ORDER BY</span> created_at <span class="kw">DESC</span>
+<span class="kw">LIMIT</span>  <span class="num">20</span>
+<span class="kw">OFFSET</span> <span class="num">1000000</span>;</pre>
+      </div>
+      <div class="code-block">
+        <div class="code-header"><span class="code-label">Keyset Pagination</span><span class="code-badge badge-good">O(1) SEEK</span></div>
+        <pre><span class="cm">-- Pass the last seen cursor value</span>
+<span class="cm">-- Seeks directly via index, always fast</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders
+<span class="kw">WHERE</span>  created_at < <span class="str">'2024-06-15T10:23:00Z'</span>
+<span class="kw">ORDER BY</span> created_at <span class="kw">DESC</span>
+<span class="kw">LIMIT</span>  <span class="num">20</span>;</pre>
+      </div>
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- QUICK REFERENCE TABLE -->
+  <section class="section">
+    <div class="section-header">
+      <div class="section-num">REF</div>
+      <div>
+        <div class="section-title">Quick Reference</div>
+        <div class="section-desc">EXPLAIN output signals and what they mean</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Signal in EXPLAIN</th><th>Severity</th><th>What It Means</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>Seq Scan</code> on large table</td>
+            <td><span class="pill pill-red">Critical</span></td>
+            <td>No usable index — reading all rows</td>
+            <td>Add appropriate index; check predicate for function wrapping</td>
+          </tr>
+          <tr>
+            <td><code>Rows Removed by Filter</code> &gt; 80%</td>
+            <td><span class="pill pill-red">Critical</span></td>
+            <td>Massive waste scanning rows that get thrown away</td>
+            <td>Index on filter column; use partial index</td>
+          </tr>
+          <tr>
+            <td>Est. rows ≪ actual rows</td>
+            <td><span class="pill pill-yellow">High</span></td>
+            <td>Planner underestimated — chose wrong join type/order</td>
+            <td>Run ANALYZE; increase statistics target on skewed column</td>
+          </tr>
+          <tr>
+            <td><code>Sort Method: external merge</code></td>
+            <td><span class="pill pill-yellow">High</span></td>
+            <td>Sort spilled to disk — too little work_mem</td>
+            <td>SET work_mem higher; add covering index to avoid sort</td>
+          </tr>
+          <tr>
+            <td><code>Heap Fetches: N</code> &gt; 0</td>
+            <td><span class="pill pill-blue">Medium</span></td>
+            <td>Index-only scan fetching heap for visibility</td>
+            <td>Run VACUUM to update visibility map; accept small counts</td>
+          </tr>
+          <tr>
+            <td><code>Hash Batches: N</code> &gt; 1</td>
+            <td><span class="pill pill-blue">Medium</span></td>
+            <td>Hash join spilled to disk</td>
+            <td>Increase work_mem; reduce join result set size</td>
+          </tr>
+          <tr>
+            <td><code>Nested Loop</code> on large tables</td>
+            <td><span class="pill pill-yellow">High</span></td>
+            <td>O(n×m) behavior — wrong join algorithm</td>
+            <td>Add index on inner join key; stats may be misleading planner</td>
+          </tr>
+          <tr>
+            <td><code>shared read</code> ≫ <code>shared hit</code></td>
+            <td><span class="pill pill-yellow">High</span></td>
+            <td>Most data read from disk, not buffer cache</td>
+            <td>Increase shared_buffers; add covering index to reduce I/O</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div><!-- /wrapper -->
+
+<footer>
+  SQL Query Optimization · Senior Engineer's Handbook · All examples tested on PostgreSQL 15 & MySQL 8.0
+</footer>
+
+<script>
+  function toggleTheme() {
+    const html = document.documentElement;
+    const btn  = document.querySelector('.theme-toggle');
+    if (html.dataset.theme === 'dark') {
+      html.dataset.theme = 'light';
+      btn.textContent = '☾ Dark';
+    } else {
+      html.dataset.theme = 'dark';
+      btn.textContent = '☀ Light';
+    }
+  }
+
+  function toggleAcc(btn) {
+    const item = btn.closest('.acc-item');
+    const wasOpen = item.classList.contains('open');
+    document.querySelectorAll('.acc-item').forEach(i => i.classList.remove('open'));
+    if (!wasOpen) item.classList.add('open');
+  }
+
+  // Animate perf bars on scroll
+  const bars = document.querySelectorAll('.perf-fill');
+  const widths = Array.from(bars).map(b => b.style.width);
+  bars.forEach(b => b.style.width = '0');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        bars.forEach((b, i) => {
+          setTimeout(() => { b.style.width = widths[i]; }, i * 100);
+        });
+        observer.disconnect();
+      }
+    });
+  }, { threshold: 0.3 });
+
+  const perfSection = document.querySelector('.perf-bar-wrap');
+  if (perfSection) observer.observe(perfSection);
+</script>
+</body>
+</html>
